@@ -51,7 +51,7 @@ const WebhookManager: React.FC<WebhookManagerProps> = ({ business, onClose }) =>
         headers['Webhook-Secret'] = webhookSecret;
       }
 
-      const response = await fetch('http://localhost:8000/api/webhooks/webhook/bokadirekt', {
+      const response = await fetch('http://217.154.235.96:8000/api/webhooks/webhook/bokadirekt', {
         method: 'POST',
         headers,
         body: JSON.stringify(testData)
