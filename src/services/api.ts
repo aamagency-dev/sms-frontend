@@ -185,25 +185,82 @@ class ApiService {
     return response.data;
   }
 
+  // Analytics methods
+  async getRetentionAnalytics(months: number = 12, businessId?: string) {
+    const url = businessId 
+      ? `/analytics/retention?months=${months}&business_id=${businessId}`
+      : `/analytics/retention?months=${months}`;
+    const response = await this.api.get(url);
+    return response.data;
+  }
+
+  async getDashboardMetrics() {
+    const response = await this.api.get('/analytics/dashboard');
+    return response.data;
+  }
+
+  async getSatisfactionTrends(businessId?: string) {
+    const url = businessId ? `/analytics/satisfaction-trends?business_id=${businessId}` : '/analytics/satisfaction-trends';
+    const response = await this.api.get(url);
+    return response.data;
+  }
+
   // Admin endpoints
   async getAdminStats() {
     const response = await this.api.get('/api/admin/stats');
     return response.data;
   }
 
-  async getAllUsers() {
-    const response = await this.api.get('/api/admin/users');
-    return response.data;
+  // User management endpoints
+  async getUsers() {
+    try {
+      const response = await this.api.get('/api/admin/users');
+      return response.data;
+    } catch (error: any) {
+      console.error('Get users error:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
-  async updateUserRole(userId: string, role: string) {
-    const response = await this.api.put(`/api/admin/users/${userId}/role`, { role });
-    return response.data;
+  async createUser(userData: {
+    email: string;
+    full_name: string;
+    password: string;
+    role: 'admin' | 'user';
+    business_id?: string;
+  }) {
+    try {
+      const response = await this.api.post('/api/admin/users', userData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Create user error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  async updateUser(userId: string, userData: {
+    full_name?: string;
+    role?: 'admin' | 'user';
+    business_id?: string;
+    password?: string;
+  }) {
+    try {
+      const response = await this.api.put(`/api/admin/users/${userId}`, userData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Update user error:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   async deleteUser(userId: string) {
-    const response = await this.api.delete(`/api/admin/users/${userId}`);
-    return response.data;
+    try {
+      const response = await this.api.delete(`/api/admin/users/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Delete user error:', error.response?.data || error.message);
+      throw error;
+    }
   }
 
   // Customer Import/Export endpoints
@@ -307,6 +364,27 @@ class ApiService {
   async deleteWorkflow(workflowId: string) {
     const response = await this.api.delete(`/api/workflows/${workflowId}`);
     return response.data;
+  }
+
+  // Generic methods
+  async get(url: string) {
+    const response = await this.api.get(url);
+    return response;
+  }
+
+  async put(url: string, data: any) {
+    const response = await this.api.put(url, data);
+    return response;
+  }
+
+  async post(url: string, data: any) {
+    const response = await this.api.post(url, data);
+    return response;
+  }
+
+  async delete(url: string) {
+    const response = await this.api.delete(url);
+    return response;
   }
 }
 

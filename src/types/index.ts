@@ -19,10 +19,34 @@ export interface Business {
   contact_phone?: string;
   contact_email?: string;
   twilio_phone_number?: string;
-  retention_months_new: number;
-  retention_months_returning: number;
-  retention_days_after_booking: number;
-  sms_send_time_type: 'fixed' | 'random';
+  google_review_link?: string;
+  inactive_customer_days?: number;
+  // New SMS settings - make them optional for existing data
+  sms_settings?: {
+    post_appointment: {
+      enabled: boolean;
+      delay_hours: number;
+      business_hours_only: boolean;
+      skip_weekends: boolean;
+      send_start_time: string;
+      send_end_time: string;
+    };
+    retention: {
+      enabled: boolean;
+      default_interval_months: number;
+    };
+  };
+  service_intervals?: {
+    [serviceName: string]: {
+      interval_months: number;
+      template: string;
+    };
+  };
+  // Keep old fields for backward compatibility
+  retention_months_new?: number;
+  retention_months_returning?: number;
+  retention_days_after_booking?: number;
+  sms_send_time_type?: 'fixed' | 'random';
   sms_send_time?: string;
   sms_send_time_start?: string;
   sms_send_time_end?: string;

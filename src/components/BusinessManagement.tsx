@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BusinessForm from './BusinessForm';
 import PriceListManager from './PriceListManager';
 import WebhookManager from './WebhookManager';
+import SMSSettings from './SMSSettings';
 import { Business } from '../types';
 import { BusinessFormData } from './BusinessForm';
 import apiService from '../services/api';
@@ -13,6 +14,7 @@ const BusinessManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedBusinessForPriceList, setSelectedBusinessForPriceList] = useState<Business | null>(null);
   const [selectedBusinessForWebhook, setSelectedBusinessForWebhook] = useState<Business | null>(null);
+  const [selectedBusinessForSMS, setSelectedBusinessForSMS] = useState<Business | null>(null);
 
   // Fetch businesses from API
   const fetchBusinesses = async (setLoadingState = true) => {
@@ -62,8 +64,16 @@ const BusinessManagement: React.FC = () => {
     setSelectedBusinessForWebhook(business);
   };
 
+  const handleSMSSettings = (business: Business) => {
+    setSelectedBusinessForSMS(business);
+  };
+
   const handleCloseWebhook = () => {
     setSelectedBusinessForWebhook(null);
+  };
+
+  const handleCloseSMSSettings = () => {
+    setSelectedBusinessForSMS(null);
   };
 
   const handleFormSubmit = async (data: BusinessFormData) => {
@@ -206,6 +216,9 @@ const BusinessManagement: React.FC = () => {
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Twilio Phone
                       </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Google Review
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Retention Settings
                       </th>
@@ -233,6 +246,20 @@ const BusinessManagement: React.FC = () => {
                           <div className="text-purple-600 font-medium">
                             {business.twilio_phone_number || 'Not set'}
                           </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {business.google_review_link ? (
+                            <a 
+                              href={business.google_review_link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              Review Link
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">Not set</span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           <div>
@@ -265,6 +292,12 @@ const BusinessManagement: React.FC = () => {
                             className="text-blue-600 hover:text-blue-900 mr-2"
                           >
                             Webhook
+                          </button>
+                          <button
+                            onClick={() => handleSMSSettings(business)}
+                            className="text-orange-600 hover:text-orange-900 mr-2"
+                          >
+                            SMS Settings
                           </button>
                           <button
                             onClick={() => handleDeleteBusiness(business.id)}
@@ -344,6 +377,41 @@ const BusinessManagement: React.FC = () => {
                   type="button"
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={handleCloseWebhook}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* SMS Settings Modal */}
+      {selectedBusinessForSMS && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={handleCloseSMSSettings}></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="w-full">
+                    <h3 className="text-2xl leading-6 font-bold text-gray-900 mb-4">
+                      SMS Settings - {selectedBusinessForSMS.name}
+                    </h3>
+                    <SMSSettings businessId={selectedBusinessForSMS.id} />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleCloseSMSSettings}
                 >
                   Close
                 </button>

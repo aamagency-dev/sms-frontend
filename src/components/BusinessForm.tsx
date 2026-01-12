@@ -14,15 +14,39 @@ export interface BusinessFormData {
   contact_phone?: string;
   contact_email?: string;
   twilio_phone_number?: string;
-  retention_months_new: number;
-  retention_months_returning: number;
-  retention_days_after_booking: number;
-  sms_send_time_type: 'fixed' | 'random';
-  sms_send_time?: string; // HH:MM format for fixed time
-  sms_send_time_start?: string; // HH:MM format for random range start
-  sms_send_time_end?: string; // HH:MM format for random range end
-  bokadirekt_webhook_secret?: string; // Optional webhook secret for Boka Direkt
-  priceListFile?: File; // Optional price list CSV file
+  google_review_link?: string;
+  inactive_customer_days: number;
+  // New SMS settings structure - not optional for form state
+  sms_settings: {
+    post_appointment: {
+      enabled: boolean;
+      delay_hours: number;
+      business_hours_only: boolean;
+      skip_weekends: boolean;
+      send_start_time: string;
+      send_end_time: string;
+    };
+    retention: {
+      enabled: boolean;
+      default_interval_months: number;
+    };
+  };
+  service_intervals: {
+    [serviceName: string]: {
+      interval_months: number;
+      template: string;
+    };
+  };
+  // Keep old fields for backward compatibility during migration
+  retention_months_new?: number;
+  retention_months_returning?: number;
+  retention_days_after_booking?: number;
+  sms_send_time_type?: 'fixed' | 'random';
+  sms_send_time?: string;
+  sms_send_time_start?: string;
+  sms_send_time_end?: string;
+  bokadirekt_webhook_secret?: string;
+  priceListFile?: File;
 }
 
 const BusinessForm: React.FC<BusinessFormProps> = ({
@@ -37,6 +61,32 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
     contact_phone: initialData?.contact_phone || '',
     contact_email: initialData?.contact_email || '',
     twilio_phone_number: initialData?.twilio_phone_number || '',
+    google_review_link: initialData?.google_review_link || '',
+    inactive_customer_days: initialData?.inactive_customer_days || 90,
+    // New SMS settings with defaults - always present
+    sms_settings: initialData?.sms_settings || {
+      post_appointment: {
+        enabled: true,
+        delay_hours: 20,
+        business_hours_only: true,
+        skip_weekends: false,
+        send_start_time: '09:00',
+        send_end_time: '18:00'
+      },
+      retention: {
+        enabled: true,
+        default_interval_months: 3
+      }
+    },
+    service_intervals: initialData?.service_intervals || {
+      "Men's Haircut": { interval_months: 1.5, template: 'quick_cut' },
+      "Women's Haircut": { interval_months: 2, template: 'standard' },
+      "Hair Coloring": { interval_months: 2.5, template: 'color_care' },
+      "Beard Trim": { interval_months: 1, template: 'beard_care' },
+      "Styling": { interval_months: 1.5, template: 'style_maintain' },
+      "Treatment": { interval_months: 3, template: 'treatment_followup' }
+    },
+    // Keep old fields for compatibility
     retention_months_new: initialData?.retention_months_new || 3,
     retention_months_returning: initialData?.retention_months_returning || 2,
     retention_days_after_booking: initialData?.retention_days_after_booking || 35,
@@ -44,31 +94,65 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
     sms_send_time: initialData?.sms_send_time || '14:00',
     sms_send_time_start: initialData?.sms_send_time_start || '13:00',
     sms_send_time_end: initialData?.sms_send_time_end || '18:00',
-    bokadirekt_webhook_secret: initialData?.bokadirekt_webhook_secret || '',
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof BusinessFormData, string>>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [priceListFile, setPriceListFile] = useState<File | null>(null);
-  const [importResult, setImportResult] = useState<any>(null);
-  const [isImporting, setIsImporting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'number' ? parseInt(value) || 0 : value,
-    });
-    // Clear error for this field
-    if (errors[name as keyof BusinessFormData]) {
-      setErrors({
-        ...errors,
-        [name]: undefined,
-      });
+    
+    if (type === 'checkbox') {
+      const checkbox = e.target as HTMLInputElement;
+      if (name.startsWith('sms_settings.')) {
+        const path = name.split('.');
+        setFormData(prev => ({
+          ...prev,
+          sms_settings: {
+            ...prev.sms_settings,
+            [path[1]]: {
+              ...prev.sms_settings[path[1] as keyof typeof prev.sms_settings],
+              [path[2]]: checkbox.checked
+            }
+          }
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: checkbox.checked }));
+      }
+    } else if (name.startsWith('sms_settings.')) {
+      const path = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        sms_settings: {
+          ...prev.sms_settings,
+          [path[1]]: {
+            ...prev.sms_settings[path[1] as keyof typeof prev.sms_settings],
+            [path[2]]: type === 'number' ? parseFloat(value) || 0 : value
+          }
+        }
+      }));
+    } else if (name.startsWith('service_interval.')) {
+      const [_, serviceName, field] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        service_intervals: {
+          ...prev.service_intervals,
+          [serviceName]: {
+            ...prev.service_intervals[serviceName],
+            [field]: field === 'interval_months' ? parseFloat(value) || 0 : value
+          }
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'number' ? parseFloat(value) || 0 : value
+      }));
     }
   };
 
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof BusinessFormData, string>> = {};
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
       newErrors.name = 'Business name is required';
@@ -76,28 +160,10 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
 
     if (!formData.slug.trim()) {
       newErrors.slug = 'Slug is required';
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = 'Slug must contain only lowercase letters, numbers, and hyphens';
     }
 
-    if (formData.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
-      newErrors.contact_email = 'Invalid email address';
-    }
-
-    if (formData.twilio_phone_number && !/^\+?[1-9]\d{1,14}$/.test(formData.twilio_phone_number.replace(/\s/g, ''))) {
-      newErrors.twilio_phone_number = 'Invalid phone number format (e.g., +46 70 123 45 67)';
-    }
-
-    if (formData.retention_months_new < 1 || formData.retention_months_new > 24) {
-      newErrors.retention_months_new = 'Must be between 1 and 24 months';
-    }
-
-    if (formData.retention_months_returning < 1 || formData.retention_months_returning > 24) {
-      newErrors.retention_months_returning = 'Must be between 1 and 24 months';
-    }
-
-    if (formData.retention_days_after_booking < 1 || formData.retention_days_after_booking > 200) {
-      newErrors.retention_days_after_booking = 'Must be between 1 and 200 days';
+    if (formData.inactive_customer_days < 30 || formData.inactive_customer_days > 365) {
+      newErrors.inactive_customer_days = 'Must be between 30 and 365 days';
     }
 
     setErrors(newErrors);
@@ -107,7 +173,14 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit({ ...formData, priceListFile: priceListFile || undefined });
+      // Include both new and old settings for backward compatibility
+      const submitData = {
+        ...formData,
+        sms_settings: formData.sms_settings,
+        service_intervals: formData.service_intervals,
+        priceListFile: priceListFile || undefined
+      };
+      onSubmit(submitData);
     }
   };
 
@@ -153,7 +226,7 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
 
         <div>
           <label htmlFor="slug" className="block text-sm font-medium text-gray-700">
-            Slug *
+            URL Slug *
           </label>
           <input
             type="text"
@@ -164,9 +237,6 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
             placeholder="e.g., awesome-salon"
           />
-          <p className="mt-1 text-sm text-gray-500">
-            URL-friendly identifier for the business
-          </p>
           {errors.slug && (
             <p className="mt-1 text-sm text-red-600">{errors.slug}</p>
           )}
@@ -198,296 +268,272 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
             value={formData.contact_email}
             onChange={handleChange}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-            placeholder="contact@example.com"
+            placeholder="contact@salon.com"
           />
-          {errors.contact_email && (
-            <p className="mt-1 text-sm text-red-600">{errors.contact_email}</p>
-          )}
+        </div>
+
+        <div>
+          <label htmlFor="twilio_phone_number" className="block text-sm font-medium text-gray-700">
+            Twilio Phone Number
+          </label>
+          <input
+            type="tel"
+            name="twilio_phone_number"
+            id="twilio_phone_number"
+            value={formData.twilio_phone_number}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+            placeholder="+46123456789"
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            Phone number for sending SMS messages
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="google_review_link" className="block text-sm font-medium text-gray-700">
+            Google Review Link
+          </label>
+          <input
+            type="url"
+            name="google_review_link"
+            id="google_review_link"
+            value={formData.google_review_link}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+            placeholder="https://g.page/your-salon/review"
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            Link to your Google Business profile for reviews
+          </p>
         </div>
       </div>
 
       <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">SMS Configuration</h3>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">SMS Settings</h3>
+        
+        <div className="space-y-6">
           <div>
-            <label htmlFor="twilio_phone_number" className="block text-sm font-medium text-gray-700">
-              Twilio Phone Number
-            </label>
-            <input
-              type="tel"
-              name="twilio_phone_number"
-              id="twilio_phone_number"
-              value={formData.twilio_phone_number}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-              placeholder="+46 10 123 45 67"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              The Twilio phone number that will send retention SMS messages
-            </p>
-            {errors.twilio_phone_number && (
-              <p className="mt-1 text-sm text-red-600">{errors.twilio_phone_number}</p>
-            )}
-          </div>
-        </div>
-      </div>
+            <h4 className="text-md font-medium text-gray-800 mb-3">Post-Appointment SMS</h4>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="sms_settings.post_appointment.enabled"
+                  id="sms_enabled"
+                  checked={formData.sms_settings?.post_appointment?.enabled || false}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <label htmlFor="sms_enabled" className="ml-2 block text-sm text-gray-900">
+                  Enable post-appointment SMS
+                </label>
+              </div>
 
-      <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Retention Settings</h3>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          <div>
-            <label htmlFor="retention_months_new" className="block text-sm font-medium text-gray-700">
-              New Customer Retention (months)
-            </label>
-            <input
-              type="number"
-              name="retention_months_new"
-              id="retention_months_new"
-              min="1"
-              max="24"
-              value={formData.retention_months_new}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              How long to retain new customers
-            </p>
-            {errors.retention_months_new && (
-              <p className="mt-1 text-sm text-red-600">{errors.retention_months_new}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="retention_months_returning" className="block text-sm font-medium text-gray-700">
-              Returning Customer Retention (months)
-            </label>
-            <input
-              type="number"
-              name="retention_months_returning"
-              id="retention_months_returning"
-              min="1"
-              max="24"
-              value={formData.retention_months_returning}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              How long to retain returning customers
-            </p>
-            {errors.retention_months_returning && (
-              <p className="mt-1 text-sm text-red-600">{errors.retention_months_returning}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="retention_days_after_booking" className="block text-sm font-medium text-gray-700">
-              Days After Booking
-            </label>
-            <input
-              type="number"
-              name="retention_days_after_booking"
-              id="retention_days_after_booking"
-              min="1"
-              max="200"
-              value={formData.retention_days_after_booking}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              Days to wait after booking before sending retention SMS
-            </p>
-            {errors.retention_days_after_booking && (
-              <p className="mt-1 text-sm text-red-600">{errors.retention_days_after_booking}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">SMS Send Time Settings</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Send Time Type
-            </label>
-            <select
-              name="sms_send_time_type"
-              value={formData.sms_send_time_type}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-            >
-              <option value="random">Random Time (Business Hours)</option>
-              <option value="fixed">Fixed Time</option>
-            </select>
-          </div>
-
-          {formData.sms_send_time_type === 'fixed' ? (
-            <div>
-              <label htmlFor="sms_send_time" className="block text-sm font-medium text-gray-700">
-                SMS Send Time
-              </label>
-              <input
-                type="time"
-                name="sms_send_time"
-                id="sms_send_time"
-                value={formData.sms_send_time}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Time of day when retention SMS will be sent
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="sms_send_time_start" className="block text-sm font-medium text-gray-700">
-                  Random Start Time
+                <label htmlFor="delay_hours" className="block text-sm font-medium text-gray-700">
+                  Send after (hours)
                 </label>
                 <input
-                  type="time"
-                  name="sms_send_time_start"
-                  id="sms_send_time_start"
-                  value={formData.sms_send_time_start}
+                  type="number"
+                  name="sms_settings.post_appointment.delay_hours"
+                  id="delay_hours"
+                  min="1"
+                  max="72"
+                  value={formData.sms_settings?.post_appointment?.delay_hours || 20}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                  className="mt-1 block w-32 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
                 />
                 <p className="mt-1 text-sm text-gray-500">
-                  Earliest time to send SMS
+                  Hours after appointment to send SMS (1-72)
                 </p>
               </div>
-              <div>
-                <label htmlFor="sms_send_time_end" className="block text-sm font-medium text-gray-700">
-                  Random End Time
-                </label>
+
+              <div className="flex items-center">
                 <input
-                  type="time"
-                  name="sms_send_time_end"
-                  id="sms_send_time_end"
-                  value={formData.sms_send_time_end}
+                  type="checkbox"
+                  name="sms_settings.post_appointment.business_hours_only"
+                  id="business_hours_only"
+                  checked={formData.sms_settings?.post_appointment?.business_hours_only || false}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                 />
-                <p className="mt-1 text-sm text-gray-500">
-                Time range when SMS will be sent (randomized within this window)
-              </p>
+                <label htmlFor="business_hours_only" className="ml-2 block text-sm text-gray-900">
+                  Only send during business hours
+                </label>
+              </div>
+
+              {formData.sms_settings?.post_appointment?.business_hours_only && (
+                <div className="grid grid-cols-2 gap-4 ml-6">
+                  <div>
+                    <label htmlFor="send_start_time" className="block text-sm font-medium text-gray-700">
+                      Start time
+                    </label>
+                    <input
+                      type="time"
+                      name="sms_settings.post_appointment.send_start_time"
+                      id="send_start_time"
+                      value={formData.sms_settings?.post_appointment?.send_start_time || '09:00'}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="send_end_time" className="block text-sm font-medium text-gray-700">
+                      End time
+                    </label>
+                    <input
+                      type="time"
+                      name="sms_settings.post_appointment.send_end_time"
+                      id="send_end_time"
+                      value={formData.sms_settings?.post_appointment?.send_end_time || '18:00'}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="sms_settings.post_appointment.skip_weekends"
+                  id="skip_weekends"
+                  checked={formData.sms_settings?.post_appointment?.skip_weekends || false}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <label htmlFor="skip_weekends" className="ml-2 block text-sm text-gray-900">
+                  Skip weekends
+                </label>
               </div>
             </div>
-          )}
+          </div>
+
+          <div>
+            <h4 className="text-md font-medium text-gray-800 mb-3">Service Retention Intervals</h4>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-3">
+                Configure how often to send follow-up SMS for different services
+              </p>
+              <div className="space-y-2">
+                {Object.entries(formData.service_intervals || {}).map(([serviceName, config]) => (
+                  <div key={serviceName} className="grid grid-cols-2 gap-4 items-center">
+                    <label className="text-sm text-gray-700">{serviceName}</label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        name={`service_interval.${serviceName}.interval_months`}
+                        step="0.5"
+                        min="0.5"
+                        max="12"
+                        value={config.interval_months}
+                        onChange={handleChange}
+                        className="w-20 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                      />
+                      <span className="text-sm text-gray-500">months</span>
+                      <select
+                        name={`service_interval.${serviceName}.template`}
+                        value={config.template}
+                        onChange={handleChange}
+                        className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                      >
+                        <option value="quick_cut">Quick Cut</option>
+                        <option value="standard">Standard</option>
+                        <option value="color_care">Color Care</option>
+                        <option value="beard_care">Beard Care</option>
+                        <option value="style_maintain">Style Maintain</option>
+                        <option value="treatment_followup">Treatment Follow-up</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Import Price List (Optional)</h3>
-        <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Inactive Customer Settings</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
           <div>
-            <label htmlFor="priceListFile" className="block text-sm font-medium text-gray-700">
-              Price List CSV File
+            <label htmlFor="inactive_customer_days" className="block text-sm font-medium text-gray-700">
+              Inactive After (days)
             </label>
             <input
-              type="file"
-              id="priceListFile"
-              accept=".csv"
-              onChange={(e) => setPriceListFile(e.target.files?.[0] || null)}
-              className="mt-1 block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-md file:border-0
-                file:text-sm file:font-semibold
-                file:bg-purple-50 file:text-purple-700
-                hover:file:bg-purple-100"
+              type="number"
+              name="inactive_customer_days"
+              id="inactive_customer_days"
+              min="30"
+              max="365"
+              value={formData.inactive_customer_days}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
             />
             <p className="mt-1 text-sm text-gray-500">
-              Upload a CSV file with your services and prices. Format: name, description, price, duration, category
+              Days without visit before customer is considered inactive
             </p>
-          </div>
-
-          {priceListFile && (
-            <div className="bg-gray-50 p-4 rounded-md">
-              <p className="text-sm text-gray-700">
-                Selected file: <span className="font-medium">{priceListFile.name}</span>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Size: {(priceListFile.size / 1024).toFixed(2)} KB
-              </p>
-            </div>
-          )}
-
-          {importResult && (
-            <div className={`p-4 rounded-md ${importResult.success ? 'bg-green-50' : 'bg-yellow-50'}`}>
-              <h4 className={`text-sm font-medium ${importResult.success ? 'text-green-800' : 'text-yellow-800'}`}>
-                Import {importResult.success ? 'Completed' : 'Completed with Warnings'}
-              </h4>
-              <div className="mt-2 text-sm text-gray-700">
-                <p>✅ Imported: {importResult.imported} services</p>
-                {importResult.duplicates > 0 && <p>⚠️ Duplicates skipped: {importResult.duplicates}</p>}
-                {importResult.errors > 0 && <p>❌ Errors: {importResult.errors}</p>}
-              </div>
-            </div>
-          )}
-
-          <div className="bg-blue-50 p-4 rounded-md">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">CSV Format Example:</h4>
-            <pre className="text-xs text-blue-800 bg-white p-2 rounded border border-blue-200">
-{`name,description,price,duration,category
-Haircut,Standard haircut,299,30,Hair
-Beard Trim,Beard trim with hot towel,149,20,Beard
-Color,Full color treatment,599,90,Color`}
-            </pre>
-            <p className="text-xs text-blue-700 mt-2">
-              Only 'name' and 'price' columns are required. Others are optional.
-            </p>
+            {errors.inactive_customer_days && (
+              <p className="mt-1 text-sm text-red-600">{errors.inactive_customer_days}</p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Boka Direkt Webhook Settings</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Webhook Configuration</h3>
         <div className="space-y-4">
           <div>
             <label htmlFor="bokadirekt_webhook_secret" className="block text-sm font-medium text-gray-700">
-              Webhook Secret (Optional)
+              Boka Direkt Webhook Secret
             </label>
             <input
-              type="text"
+              type="password"
               name="bokadirekt_webhook_secret"
               id="bokadirekt_webhook_secret"
-              value={formData.bokadirekt_webhook_secret}
+              value={formData.bokadirekt_webhook_secret || ''}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-              placeholder="Leave empty if not using webhook secret"
+              placeholder="Enter webhook secret for Boka Direkt integration"
             />
             <p className="mt-1 text-sm text-gray-500">
-              Optional secret for securing Boka Direkt webhook. If set, must match the secret in Boka Direkt.
+              Optional: Secret key for validating webhook requests from Boka Direkt
             </p>
           </div>
           
           <div className="bg-blue-50 p-4 rounded-md">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">After creating this business:</h4>
-            <ol className="text-sm text-blue-800 list-decimal list-inside space-y-1">
-              <li>Go to Business Management and click "Webhook" for this business</li>
-              <li>Copy the webhook URL and Business ID</li>
-              <li>Configure these in Boka Direkt's webhook settings</li>
-              <li>Test the connection to ensure it's working</li>
-            </ol>
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Webhook URL for Boka Direkt</h4>
+            <p className="text-sm text-blue-700 mb-2">
+              Use this URL in your Boka Direkt webhook configuration:
+            </p>
+            <code className="text-xs bg-blue-100 px-2 py-1 rounded break-all">
+              {window.location.origin}/api/webhooks/bokadirekt
+            </code>
+            <p className="text-sm text-blue-600 mt-2">
+              Make sure to include the webhook secret above if required by Boka Direkt
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end space-x-3 pt-6">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex justify-center rounded-md border border-transparent bg-purple-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : initialData ? 'Update Business' : 'Create Business'}
-        </button>
+      <div className="pt-6">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+          >
+            {loading ? 'Saving...' : (initialData?.id ? 'Update Business' : 'Create Business')}
+          </button>
+        </div>
       </div>
     </form>
   );
