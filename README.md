@@ -1,46 +1,141 @@
-# Getting Started with Create React App
+# Customer Retention System - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the React frontend for the Customer Retention Automation System. It provides a dashboard for managing customers, businesses, workflows, and viewing analytics.
 
-## Available Scripts
+## Tech Stack
 
-In the project directory, you can run:
+- React 18 with TypeScript
+- Tailwind CSS for styling
+- React Router for navigation
+- Axios for API communication
+- React Hook Form with Yup validation
+- React Context for state management
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- Node.js (v14 or higher)
+- npm or yarn
+- Backend server running on `http://localhost:8000`
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Installation
 
-### `npm test`
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-### `npm run build`
+3. Create a `.env` file in the root of the frontend directory with:
+   ```
+   REACT_APP_API_URL=http://localhost:8000
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Running the Application
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Start the development server:
+   ```bash
+   npm start
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+2. Open your browser and navigate to `http://localhost:3000`
 
-### `npm run eject`
+## Features
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Authentication
+- User registration and login
+- JWT token-based authentication
+- Protected routes
+- Automatic logout on token expiration
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Dashboard
+- Overview statistics (total customers, new customers, active customers, scheduled SMS)
+- Recent customers list
+- Scheduled SMS management
+- Quick access to all features
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### API Integration
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+The frontend integrates with the following backend API endpoints:
 
-## Learn More
+#### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `GET /api/auth/me` - Get current user
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+#### Dashboard
+- `GET /api/dashboard/overview` - Dashboard statistics
+- `GET /api/dashboard/customers/recent` - Recent customers
+- `GET /api/dashboard/sms/scheduled` - Scheduled SMS messages
+- `POST /api/dashboard/sms/cancel/{sms_id}` - Cancel scheduled SMS
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+#### Customers
+- `GET /api/customers/` - List customers
+- `POST /api/customers/` - Create customer
+- `GET /api/customers/{id}` - Get customer details
+- `PUT /api/customers/{id}` - Update customer
+- `DELETE /api/customers/{id}` - Delete customer
+
+#### Businesses
+- `POST /api/businesses/` - Create business
+- `GET /api/businesses/{id}` - Get business details
+- `PUT /api/businesses/{id}` - Update business
+- `POST /api/businesses/{id}/locations` - Add location mapping
+
+#### Workflows
+- `GET /api/workflows/` - List workflows
+- `POST /api/workflows/` - Create workflow
+- `GET /api/workflows/{id}` - Get workflow details
+- `PUT /api/workflows/{id}` - Update workflow
+- `DELETE /api/workflows/{id}` - Delete workflow
+
+## Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+├── contexts/           # React contexts (AuthContext)
+├── pages/              # Page components
+│   ├── Login.tsx       # Login page
+│   ├── Register.tsx    # Registration page
+│   └── Dashboard.tsx   # Main dashboard
+├── services/           # API services
+│   └── api.ts          # API client with axios
+├── types/              # TypeScript type definitions
+│   └── index.ts        # All type definitions
+├── App.tsx             # Main app component with routing
+├── index.css           # Global styles with Tailwind
+└── index.tsx           # App entry point
+```
+
+## Environment Variables
+
+- `REACT_APP_API_URL` - Backend API URL (default: http://localhost:8000)
+
+## Build for Production
+
+1. Create a production build:
+   ```bash
+   npm run build
+   ```
+
+2. The build files will be in the `build` directory
+
+## Development Notes
+
+- The app uses React Router for client-side routing
+- Authentication state is managed through React Context
+- API requests are handled through a centralized axios instance
+- Form validation is done with React Hook Form and Yup schemas
+- Tailwind CSS is used for responsive, utility-first styling
+
+## Common Issues
+
+1. **CORS Errors**: Ensure the backend has CORS configured to allow requests from `http://localhost:3000`
+
+2. **Authentication Errors**: Check that the backend is running and the JWT secret is properly configured
+
+3. **Styling Issues**: Make sure Tailwind CSS is properly configured and the build process includes PostCSS
