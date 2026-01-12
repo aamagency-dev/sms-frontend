@@ -45,12 +45,12 @@ const Login: React.FC = () => {
       console.log('Testing backend connection...');
       
       // Test health endpoint
-      const healthResponse = await fetch('http://217.154.235.96:8000/health');
+      const healthResponse = await fetch('/health');
       console.log('Health endpoint response:', healthResponse.status);
       const healthData = await healthResponse.json();
       
       // Test auth endpoint
-      const authResponse = await fetch('http://217.154.235.96:8000/api/auth/me', {
+      const authResponse = await fetch('/api/auth/me', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -61,7 +61,7 @@ const Login: React.FC = () => {
       alert(`Backend is responding!\nHealth: ${healthResponse.status} - ${JSON.stringify(healthData)}\nAuth: ${authResponse.status}`);
     } catch (error: any) {
       console.error('Connection test failed:', error);
-      alert(`Connection failed: ${error.message}\n\nMake sure the backend is running on http://217.154.235.96:8000`);
+      alert(`Connection failed: ${error.message}\n\nMake sure the backend is running`);
     }
   };
 
