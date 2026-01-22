@@ -38,7 +38,6 @@ export interface BusinessFormData {
     };
   };
   bokadirekt_webhook_secret?: string;
-  bokadirekt_location_id?: string;
   priceListFile?: File;
 }
 
@@ -80,7 +79,6 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
       "Treatment": { interval_months: 3, template: 'treatment_followup' }
     },
     bokadirekt_webhook_secret: initialData?.bokadirekt_webhook_secret || '',
-    bokadirekt_location_id: initialData?.bokadirekt_location_id || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -486,24 +484,6 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
             />
             <p className="mt-1 text-sm text-gray-500">
               Optional: Secret key for validating webhook requests from Boka Direkt
-            </p>
-          </div>
-          
-          <div>
-            <label htmlFor="bokadirekt_location_id" className="block text-sm font-medium text-gray-700">
-              Boka Direkt Location ID
-            </label>
-            <input
-              type="text"
-              name="bokadirekt_location_id"
-              id="bokadirekt_location_id"
-              value={formData.bokadirekt_location_id || ''}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-              placeholder="Enter your Boka Direkt location ID"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              Required: Your location ID from Boka Direkt for webhook processing
             </p>
           </div>
           

@@ -43,6 +43,7 @@ export interface Business {
     };
   };
   bokadirekt_webhook_secret?: string;
+  bokadirekt_location_id?: string;
   owner_id: string;
   created_at: string;
   updated_at: string;
