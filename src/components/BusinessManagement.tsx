@@ -220,10 +220,10 @@ const BusinessManagement: React.FC = () => {
                         Google Review
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Retention Settings
+                        SMS Settings
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        SMS Send Time
+                        Send Schedule
                       </th>
                       <th className="relative py-3.5 pl-3 pr-4 sm:pr-0">
                         <span className="sr-only">Actions</span>
@@ -262,17 +262,25 @@ const BusinessManagement: React.FC = () => {
                           )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          <div>
-                            <div>New: {business.retention_months_new} months</div>
-                            <div>Returning: {business.retention_months_returning} months</div>
-                            <div>After booking: {business.retention_days_after_booking} days</div>
-                          </div>
+                          {business.sms_settings ? (
+                            <div>
+                              <div>Post-appointment: {business.sms_settings.post_appointment?.enabled ? `${business.sms_settings.post_appointment?.delay_hours}h after` : 'Disabled'}</div>
+                              <div>Business hours: {business.sms_settings.post_appointment?.business_hours_only ? 'Yes' : 'No'}</div>
+                              <div>Retention: {business.sms_settings.retention?.enabled ? `${business.sms_settings.retention?.default_interval_months} months` : 'Disabled'}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Not configured</span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {business.sms_send_time_type === 'fixed' 
-                            ? `Fixed at ${business.sms_send_time}`
-                            : `Random (${business.sms_send_time_start} - ${business.sms_send_time_end})`
-                          }
+                          {business.sms_settings?.post_appointment?.enabled ? (
+                            <div>
+                              <div>Send: {business.sms_settings.post_appointment?.send_start_time} - {business.sms_settings.post_appointment?.send_end_time}</div>
+                              <div>Weekends: {business.sms_settings.post_appointment?.skip_weekends ? 'Skip' : 'Send'}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Disabled</span>
+                          )}
                         </td>
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
                           <button

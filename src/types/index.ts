@@ -42,14 +42,6 @@ export interface Business {
       template: string;
     };
   };
-  // Keep old fields for backward compatibility
-  retention_months_new?: number;
-  retention_months_returning?: number;
-  retention_days_after_booking?: number;
-  sms_send_time_type?: 'fixed' | 'random';
-  sms_send_time?: string;
-  sms_send_time_start?: string;
-  sms_send_time_end?: string;
   bokadirekt_webhook_secret?: string;
   owner_id: string;
   created_at: string;
@@ -150,9 +142,6 @@ export interface CreateBusinessForm {
   slug: string;
   contact_phone?: string;
   contact_email?: string;
-  retention_months_new?: number;
-  retention_months_returning?: number;
-  retention_days_after_booking?: number;
 }
 
 export interface CreateWorkflowForm {

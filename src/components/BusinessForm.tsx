@@ -37,14 +37,6 @@ export interface BusinessFormData {
       template: string;
     };
   };
-  // Keep old fields for backward compatibility during migration
-  retention_months_new?: number;
-  retention_months_returning?: number;
-  retention_days_after_booking?: number;
-  sms_send_time_type?: 'fixed' | 'random';
-  sms_send_time?: string;
-  sms_send_time_start?: string;
-  sms_send_time_end?: string;
   bokadirekt_webhook_secret?: string;
   priceListFile?: File;
 }
@@ -86,14 +78,7 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
       "Styling": { interval_months: 1.5, template: 'style_maintain' },
       "Treatment": { interval_months: 3, template: 'treatment_followup' }
     },
-    // Keep old fields for compatibility
-    retention_months_new: initialData?.retention_months_new || 3,
-    retention_months_returning: initialData?.retention_months_returning || 2,
-    retention_days_after_booking: initialData?.retention_days_after_booking || 35,
-    sms_send_time_type: initialData?.sms_send_time_type || 'random',
-    sms_send_time: initialData?.sms_send_time || '14:00',
-    sms_send_time_start: initialData?.sms_send_time_start || '13:00',
-    sms_send_time_end: initialData?.sms_send_time_end || '18:00',
+    bokadirekt_webhook_secret: initialData?.bokadirekt_webhook_secret || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
