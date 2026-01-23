@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { SERVICE_CATEGORIES } from '../services/serviceRetentionApi';
 import { Business } from '../types';
 
 interface BusinessFormProps {
@@ -71,14 +72,12 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
         default_interval_months: 3
       }
     },
-    service_intervals: initialData?.service_intervals || {
-      "Men's Haircut": { interval_months: 1.5, template: 'quick_cut' },
-      "Women's Haircut": { interval_months: 2, template: 'standard' },
-      "Hair Coloring": { interval_months: 2.5, template: 'color_care' },
-      "Beard Trim": { interval_months: 1, template: 'beard_care' },
-      "Styling": { interval_months: 1.5, template: 'style_maintain' },
-      "Treatment": { interval_months: 3, template: 'treatment_followup' }
-    },
+    service_intervals: initialData?.service_intervals || Object.fromEntries(
+  Object.entries(SERVICE_CATEGORIES).map(([key, category]) => [
+    category.name,
+    { interval_months: category.defaultInterval, template: 'standard' }
+  ])
+),
     bokadirekt_webhook_secret: initialData?.bokadirekt_webhook_secret || '',
     bokadirekt_location_id: initialData?.bokadirekt_location_id || '',
   });
@@ -403,38 +402,32 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
               <p className="text-sm text-gray-600 mb-3">
                 Configure how often to send follow-up SMS for different services
               </p>
-              <div className="space-y-2">
-                {Object.entries(formData.service_intervals || {}).map(([serviceName, config]) => (
-                  <div key={serviceName} className="grid grid-cols-2 gap-4 items-center">
-                    <label className="text-sm text-gray-700">{serviceName}</label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="number"
-                        name={`service_interval.${serviceName}.interval_months`}
-                        step="0.5"
-                        min="0.5"
-                        max="12"
-                        value={config.interval_months}
-                        onChange={handleChange}
-                        className="w-20 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-                      />
-                      <span className="text-sm text-gray-500">months</span>
-                      <select
-                        name={`service_interval.${serviceName}.template`}
-                        value={config.template}
-                        onChange={handleChange}
-                        className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-                      >
-                        <option value="quick_cut">Quick Cut</option>
-                        <option value="standard">Standard</option>
-                        <option value="color_care">Color Care</option>
-                        <option value="beard_care">Beard Care</option>
-                        <option value="style_maintain">Style Maintain</option>
-                        <option value="treatment_followup">Treatment Follow-up</option>
-                      </select>
+              <div className="space-y-4">
+                {Object.entries(SERVICE_CATEGORIES).map(([key, category]) => {
+                  const serviceName = category.name;
+                  const config = formData.service_intervals?.[serviceName] || { interval_months: category.defaultInterval, template: 'standard' };
+                  return (
+                    <div key={key} className="grid grid-cols-2 gap-4 items-center">
+                      <label className="text-sm text-gray-700 flex items-center">
+                        <span className="mr-2">{category.icon}</span>
+                        {serviceName}
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          name={`service_interval.${serviceName}.interval_months`}
+                          step="0.5"
+                          min="0.5"
+                          max="12"
+                          value={config.interval_months}
+                          onChange={handleChange}
+                          className="w-20 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+                        />
+                        <span className="text-sm text-gray-500">months</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

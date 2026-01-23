@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { serviceRetentionApi, SERVICE_CATEGORIES, formatInterval, parseInterval } from '../services/serviceRetentionApi';
 
 interface SMSSettings {
   post_appointment: {
@@ -38,15 +39,8 @@ const SMSSettings: React.FC<{ businessId: string }> = ({ businessId }) => {
     }
   });
 
-  const [serviceIntervals, setServiceIntervals] = useState<ServiceInterval[]>([
-    { service_name: "Men's Haircut", interval_months: 1.5, template: 'quick_cut' },
-    { service_name: "Women's Haircut", interval_months: 2, template: 'standard' },
-    { service_name: "Hair Coloring", interval_months: 2.5, template: 'color_care' },
-    { service_name: "Beard Trim", interval_months: 1, template: 'beard_care' },
-    { service_name: "Styling", interval_months: 1.5, template: 'style_maintain' },
-    { service_name: "Treatment", interval_months: 3, template: 'treatment_followup' }
-  ]);
-
+  const [serviceIntervals, setServiceIntervals] = useState<Record<string, any[]>>({});
+  const [categories, setCategories] = useState(SERVICE_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -57,23 +51,15 @@ const SMSSettings: React.FC<{ businessId: string }> = ({ businessId }) => {
 
   const loadSettings = async () => {
     try {
-      const response = await apiService.get(`/api/businesses/${businessId}`);
-      const business = response.data;
-      
-      if (business.sms_settings) {
-        setSettings(business.sms_settings);
-      }
-      
-      if (business.service_intervals) {
-        const intervals = Object.entries(business.service_intervals).map(([name, config]: [string, any]) => ({
-          service_name: name,
-          interval_months: config.interval_months,
-          template: config.template
-        }));
-        setServiceIntervals(intervals);
-      }
+      // Load service intervals from API
+      const intervals = await serviceRetentionApi.getIntervals(businessId);
+      setServiceIntervals(intervals);
+
+      // Load categories
+      const cats = await serviceRetentionApi.getCategories();
+      setCategories(cats);
     } catch (error) {
-      console.error('Error loading SMS settings:', error);
+      console.error('Error loading settings:', error);
     } finally {
       setLoading(false);
     }
@@ -84,21 +70,18 @@ const SMSSettings: React.FC<{ businessId: string }> = ({ businessId }) => {
     setMessage(null);
 
     try {
-      // Convert service intervals back to object format
-      const intervalsObject: { [key: string]: any } = {};
-      serviceIntervals.forEach(interval => {
-        intervalsObject[interval.service_name] = {
-          interval_months: interval.interval_months,
-          template: interval.template
-        };
-      });
+      // Save each service interval using the API
+      for (const [category, services] of Object.entries(serviceIntervals)) {
+        for (const service of services) {
+          await serviceRetentionApi.updateInterval(
+            businessId,
+            service.service_name,
+            service.interval_months
+          );
+        }
+      }
 
-      await apiService.put(`/api/businesses/${businessId}`, {
-        sms_settings: settings,
-        service_intervals: intervalsObject
-      });
-
-      setMessage({ type: 'success', text: 'SMS settings saved successfully!' });
+      setMessage({ type: 'success', text: 'Service intervals saved successfully!' });
     } catch (error: any) {
       setMessage({ type: 'error', text: error.response?.data?.detail || 'Failed to save settings' });
     } finally {
@@ -116,10 +99,15 @@ const SMSSettings: React.FC<{ businessId: string }> = ({ businessId }) => {
     }));
   };
 
-  const updateServiceInterval = (index: number, field: keyof ServiceInterval, value: string | number) => {
-    const updated = [...serviceIntervals];
-    updated[index] = { ...updated[index], [field]: value };
-    setServiceIntervals(updated);
+  const updateServiceInterval = (category: string, serviceName: string, intervalMonths: number) => {
+    setServiceIntervals(prev => ({
+      ...prev,
+      [category]: prev[category]?.map(service => 
+        service.service_name === serviceName 
+          ? { ...service, interval_months: intervalMonths }
+          : service
+      ) || []
+    }));
   };
 
   if (loading) {
@@ -231,76 +219,75 @@ const SMSSettings: React.FC<{ businessId: string }> = ({ businessId }) => {
         </p>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Interval (months)
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Message Type
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {serviceIntervals.map((interval, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {interval.service_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0.5"
-                      max="12"
-                      value={interval.interval_months}
-                      onChange={(e) => updateServiceInterval(index, 'interval_months', parseFloat(e.target.value))}
-                      className="w-20 border-gray-300 rounded-md shadow-sm p-1 border"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={interval.template}
-                      onChange={(e) => updateServiceInterval(index, 'template', e.target.value)}
-                      className="border-gray-300 rounded-md shadow-sm p-1 border"
-                    >
-                      <option value="quick_cut">Quick Cut</option>
-                      <option value="standard">Standard</option>
-                      <option value="color_care">Color Care</option>
-                      <option value="beard_care">Beard Care</option>
-                      <option value="style_maintain">Style Maintain</option>
-                      <option value="treatment_followup">Treatment Follow-up</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {Object.entries(categories).map(([categoryKey, category]) => (
+            <div key={categoryKey} className="mb-6">
+              <h4 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+                <span className="mr-2">{category.icon}</span>
+                {category.name}
+              </h4>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Service
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Interval
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {serviceIntervals[categoryKey]?.map((service: any) => (
+                    <tr key={service.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {service.service_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          max="12"
+                          value={service.interval_months}
+                          onChange={(e) => {
+                            const value = parseInterval(e.target.value);
+                            if (value !== null) {
+                              updateServiceInterval(categoryKey, service.service_name, value);
+                            }
+                          }}
+                          className="w-24 border-gray-300 rounded-md shadow-sm p-2 border"
+                        />
+                        <span className="ml-2 text-sm text-gray-500">
+                          {formatInterval(service.interval_months)}
+                        </span>
+                      </td>
+                    </tr>
+                  )) || (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-4 text-sm text-gray-500 text-center">
+                        No services configured for this category
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 text-sm text-gray-500">
-          <p>Message types:</p>
-          <ul className="list-disc list-inside mt-1">
-            <li>Quick Cut: Short, punchy messages for frequent services</li>
-            <li>Standard: General appointment reminders</li>
-            <li>Color Care: Focus on maintaining color treatments</li>
-            <li>Beard Care: Beard maintenance reminders</li>
-            <li>Style Maintain: Style preservation tips</li>
-            <li>Treatment Follow-up: Post-treatment care messages</li>
-          </ul>
+          <p>Intervals determine when customers receive follow-up SMS after their last visit.</p>
+          <p className="mt-1">For example: 1.5 months = approximately every 6 weeks</p>
         </div>
       </div>
 
       {/* Save Button */}
       <div className="flex justify-end">
         <button
+          type="button"
           onClick={saveSettings}
           disabled={saving}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
