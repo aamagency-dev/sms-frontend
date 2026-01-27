@@ -18,9 +18,24 @@ export interface Business {
   slug: string;
   contact_phone?: string;
   contact_email?: string;
-  twilio_phone_number?: string;
+  sms_phone_number?: string;
   google_review_link?: string;
+  google_review_url?: string;
+  bokadirekt_url?: string;
+  tone_of_voice?: string;
+  sms_sender_name?: string;
   inactive_customer_days?: number;
+  staff_count?: number;
+  staff_members?: Array<{
+    id?: string;
+    name: string;
+    tone_of_voice: string;
+    is_active: boolean;
+  }>;
+  // Billing information
+  org_number?: string;
+  billing_address?: string;
+  vat_number?: string;
   // New SMS settings - make them optional for existing data
   sms_settings?: {
     post_appointment: {
@@ -47,6 +62,15 @@ export interface Business {
   owner_id: string;
   created_at: string;
   updated_at: string;
+  // Configuration status from backend
+  config_status?: {
+    status: 'ready' | 'incomplete' | 'setup_required';
+    status_label: string;
+    completion_percent: number;
+    missing_required: string[];
+    missing_optional: string[];
+    is_ready: boolean;
+  };
 }
 
 export interface BusinessLocation {

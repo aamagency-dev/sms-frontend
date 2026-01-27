@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { SERVICE_CATEGORIES } from '../services/serviceRetentionApi';
 import { Business } from '../types';
+import StaffManagement from './StaffManagement';
+import ServiceManager from './ServiceManager';
 
 interface BusinessFormProps {
   onSubmit: (businessData: BusinessFormData) => void;
@@ -14,9 +15,23 @@ export interface BusinessFormData {
   slug: string;
   contact_phone?: string;
   contact_email?: string;
-  twilio_phone_number?: string;
+  sms_phone_number?: string;
   google_review_link?: string;
+  google_review_url?: string;
+  bokadirekt_url?: string;
+  tone_of_voice?: string;
+  sms_sender_name?: string;
   inactive_customer_days: number;
+  staff_members?: Array<{
+    id?: string;
+    name: string;
+    tone_of_voice: string;
+    is_active: boolean;
+  }>;
+  // Billing information
+  org_number?: string;
+  billing_address?: string;
+  vat_number?: string;
   // New SMS settings structure - not optional for form state
   sms_settings: {
     post_appointment: {
@@ -32,10 +47,10 @@ export interface BusinessFormData {
       default_interval_months: number;
     };
   };
-  service_intervals: {
+  service_intervals?: {
     [serviceName: string]: {
       interval_months: number;
-      template: string;
+      template?: string;
     };
   };
   bokadirekt_webhook_secret?: string;
@@ -54,9 +69,17 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
     slug: initialData?.slug || '',
     contact_phone: initialData?.contact_phone || '',
     contact_email: initialData?.contact_email || '',
-    twilio_phone_number: initialData?.twilio_phone_number || '',
+    sms_phone_number: initialData?.sms_phone_number || '',
     google_review_link: initialData?.google_review_link || '',
+    google_review_url: initialData?.google_review_url || '',
+    bokadirekt_url: initialData?.bokadirekt_url || '',
+    tone_of_voice: initialData?.tone_of_voice || 'Proffsig',
+    sms_sender_name: initialData?.sms_sender_name || '',
     inactive_customer_days: initialData?.inactive_customer_days || 90,
+    staff_members: initialData?.staff_members || [],
+    org_number: initialData?.org_number || '',
+    billing_address: initialData?.billing_address || '',
+    vat_number: initialData?.vat_number || '',
     // New SMS settings with defaults - always present
     sms_settings: initialData?.sms_settings || {
       post_appointment: {
@@ -72,12 +95,7 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
         default_interval_months: 3
       }
     },
-    service_intervals: initialData?.service_intervals || Object.fromEntries(
-  Object.entries(SERVICE_CATEGORIES).map(([key, category]) => [
-    category.name,
-    { interval_months: category.defaultInterval, template: 'standard' }
-  ])
-),
+    service_intervals: initialData?.service_intervals || {},
     bokadirekt_webhook_secret: initialData?.bokadirekt_webhook_secret || '',
     bokadirekt_location_id: initialData?.bokadirekt_location_id || '',
   });
@@ -85,7 +103,7 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [priceListFile, setPriceListFile] = useState<File | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     
     if (type === 'checkbox') {
@@ -119,16 +137,19 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
       }));
     } else if (name.startsWith('service_interval.')) {
       const [_, serviceName, field] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        service_intervals: {
-          ...prev.service_intervals,
-          [serviceName]: {
-            ...prev.service_intervals[serviceName],
-            [field]: field === 'interval_months' ? parseFloat(value) || 0 : value
+      setFormData(prev => {
+        const currentService = prev.service_intervals?.[serviceName] || { interval_months: 0, template: 'standard' };
+        return {
+          ...prev,
+          service_intervals: {
+            ...(prev.service_intervals || {}),
+            [serviceName]: {
+              interval_months: field === 'interval_months' ? (parseFloat(value) || 0) : currentService.interval_months,
+              template: field === 'template' ? value : (currentService.template || 'standard')
+            }
           }
-        }
-      }));
+        };
+      });
     } else {
       setFormData(prev => ({
         ...prev,
@@ -259,14 +280,14 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
         </div>
 
         <div>
-          <label htmlFor="twilio_phone_number" className="block text-sm font-medium text-gray-700">
-            Twilio Phone Number
+          <label htmlFor="sms_phone_number" className="block text-sm font-medium text-gray-700">
+            SMS Phone Number (46elks)
           </label>
           <input
             type="tel"
-            name="twilio_phone_number"
-            id="twilio_phone_number"
-            value={formData.twilio_phone_number}
+            name="sms_phone_number"
+            id="sms_phone_number"
+            value={formData.sms_phone_number}
             onChange={handleChange}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
             placeholder="+46123456789"
@@ -293,6 +314,123 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
             Link to your Google Business profile for reviews
           </p>
         </div>
+
+        <div>
+          <label htmlFor="bokadirekt_url" className="block text-sm font-medium text-gray-700">
+            Boka Direkt URL
+          </label>
+          <input
+            type="url"
+            name="bokadirekt_url"
+            id="bokadirekt_url"
+            value={formData.bokadirekt_url}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+            placeholder="https://www.bokadirekt.se/places/your-salon-12345"
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            Link to your Boka Direkt booking page (sent to customers)
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="tone_of_voice" className="block text-sm font-medium text-gray-700">
+            Standard SMS Tone of Voice (Fallback)
+          </label>
+          <select
+            name="tone_of_voice"
+            id="tone_of_voice"
+            value={formData.tone_of_voice}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
+          >
+            <option value="Jessica-tonen">Jessica-tonen (Varm, "haha" 😍✨)</option>
+            <option value="Proffsig">Proffsig (Artig, korrekt men varm)</option>
+            <option value="Kaxig/Barberare">Kaxig/Barberare (Rapp, slang 👊)</option>
+            <option value="Klassisk/Gunilla">Klassisk/Gunilla (Vårdat, mjukt ❤️)</option>
+            <option value="Spirituell/Eko">Spirituell/Eko (Lugn, mjuk 🌱)</option>
+            <option value="Trendig/Peppig">Trendig/Peppig (Entusiastisk 🔥✨)</option>
+          </select>
+          <p className="mt-1 text-sm text-gray-500">
+            Används när ingen specifik frisör är angiven för kunden
+          </p>
+        </div>
+
+      </div>
+
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Faktureringsinformation</h3>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <label htmlFor="org_number" className="block text-sm font-medium text-gray-700">
+              Organisationsnummer
+            </label>
+            <input
+              type="text"
+              name="org_number"
+              id="org_number"
+              value={formData.org_number || ''}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+              placeholder="XXXXXX-XXXX"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Företagets organisationsnummer
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="vat_number" className="block text-sm font-medium text-gray-700">
+              Momsregistreringsnummer
+            </label>
+            <input
+              type="text"
+              name="vat_number"
+              id="vat_number"
+              value={formData.vat_number || ''}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+              placeholder="SE123456789001"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Momsreg.nr (om momsregistrerad)
+            </p>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label htmlFor="billing_address" className="block text-sm font-medium text-gray-700">
+              Fakturaadress
+            </label>
+            <textarea
+              name="billing_address"
+              id="billing_address"
+              rows={3}
+              value={formData.billing_address || ''}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+              placeholder="Gatuadress&#10;Postnummer Ort"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Fullständig fakturaadress
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Tjänster & Retention-intervaller</h3>
+        <ServiceManager
+          services={formData.service_intervals || {}}
+          onChange={(services) => setFormData({ ...formData, service_intervals: services })}
+        />
+      </div>
+
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Personal på salongen</h3>
+        <StaffManagement
+          staffMembers={formData.staff_members || []}
+          onChange={(staff) => setFormData({ ...formData, staff_members: staff })}
+        />
       </div>
 
       <div className="border-t border-gray-200 pt-6">
@@ -392,42 +530,6 @@ const BusinessForm: React.FC<BusinessFormProps> = ({
                 <label htmlFor="skip_weekends" className="ml-2 block text-sm text-gray-900">
                   Skip weekends
                 </label>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-md font-medium text-gray-800 mb-3">Service Retention Intervals</h4>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-3">
-                Configure how often to send follow-up SMS for different services
-              </p>
-              <div className="space-y-4">
-                {Object.entries(SERVICE_CATEGORIES).map(([key, category]) => {
-                  const serviceName = category.name;
-                  const config = formData.service_intervals?.[serviceName] || { interval_months: category.defaultInterval, template: 'standard' };
-                  return (
-                    <div key={key} className="grid grid-cols-2 gap-4 items-center">
-                      <label className="text-sm text-gray-700 flex items-center">
-                        <span className="mr-2">{category.icon}</span>
-                        {serviceName}
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="number"
-                          name={`service_interval.${serviceName}.interval_months`}
-                          step="0.5"
-                          min="0.5"
-                          max="12"
-                          value={config.interval_months}
-                          onChange={handleChange}
-                          className="w-20 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border-gray-300"
-                        />
-                        <span className="text-sm text-gray-500">months</span>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>

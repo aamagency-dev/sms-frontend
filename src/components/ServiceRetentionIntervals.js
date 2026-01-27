@@ -101,7 +101,7 @@ const ServiceRetentionIntervals = ({ businessId }) => {
   };
 
   const handleDeleteService = async (serviceId, serviceName) => {
-    if (!confirm(`Är du säker på att du vill ta bort ${serviceName}?`)) {
+    if (!window.confirm(`Är du säker på att du vill ta bort ${serviceName}?`)) {
       return;
     }
 

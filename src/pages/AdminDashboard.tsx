@@ -8,6 +8,8 @@ import AdminCustomerImport from '../components/AdminCustomerImport';
 import AdminCustomerExport from '../components/AdminCustomerExport';
 import SmsSender from '../components/SmsSender';
 import PriceListManager from '../components/PriceListManager';
+import SMSConversationViewer from '../components/SMSConversationViewer';
+import SystemHealth from '../components/SystemHealth';
 import { User, Business } from '../types';
 
 const AdminDashboard: React.FC = () => {
@@ -18,7 +20,7 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'import-export' | 'send-sms' | 'price-list' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'businesses' | 'import-export' | 'send-sms' | 'price-list' | 'sms-conversations' | 'analytics'>('overview');
   const [importExportTab, setImportExportTab] = useState<'import' | 'export'>('import');
   const [selectedBusinessId, setSelectedBusinessId] = useState('');
 
@@ -134,6 +136,16 @@ const AdminDashboard: React.FC = () => {
                 Price List
               </button>
               <button
+                onClick={() => setActiveTab('sms-conversations')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'sms-conversations'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                💬 SMS Conversations
+              </button>
+              <button
                 onClick={() => setActiveTab('analytics')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'analytics'
@@ -149,7 +161,10 @@ const AdminDashboard: React.FC = () => {
           {/* Tab Content */}
           {activeTab === 'overview' && (
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-6">Revenue Analytics</h2>
+              {/* System Health Monitoring */}
+              <SystemHealth />
+              
+              <h2 className="text-2xl font-semibold text-gray-900 mb-6 mt-8">Revenue Analytics</h2>
               
               {/* Admin Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -381,6 +396,49 @@ const AdminDashboard: React.FC = () => {
               ) : (
                 <div className="bg-white shadow rounded-lg p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Select Business</h3>
+                  <select
+                    value={selectedBusinessId}
+                    onChange={(e) => setSelectedBusinessId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Choose a business...</option>
+                    {businesses.map((business) => (
+                      <option key={business.id} value={business.id}>
+                        {business.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'sms-conversations' && (
+            <div>
+              {selectedBusinessId ? (
+                <div>
+                  <div className="mb-4 flex items-center justify-between bg-white shadow rounded-lg p-4">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {businesses.find(b => b.id === selectedBusinessId)?.name || 'Unknown Business'}
+                      </h3>
+                      <p className="text-sm text-gray-600">SMS Conversations</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedBusinessId('')}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                    >
+                      Change Business
+                    </button>
+                  </div>
+                  <SMSConversationViewer businessId={selectedBusinessId} />
+                </div>
+              ) : (
+                <div className="bg-white shadow rounded-lg p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Select Business</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Choose a business to view SMS conversations with their customers
+                  </p>
                   <select
                     value={selectedBusinessId}
                     onChange={(e) => setSelectedBusinessId(e.target.value)}

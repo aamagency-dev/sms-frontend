@@ -6,13 +6,15 @@ import BusinessManagement from '../components/BusinessManagement';
 import CustomerManagement from '../components/CustomerManagement';
 import SmsSender from '../components/SmsSender';
 import PriceListManager from '../components/PriceListManager';
+import SMSConversationViewer from '../components/SMSConversationViewer';
+import BusinessSettings from './BusinessSettings';
 import { Business, Customer } from '../types';
 import { DashboardOverview, ScheduledSms } from '../types';
 import AdminDashboard from './AdminDashboard';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'business-form' | 'business-management' | 'import-export' | 'send-sms' | 'price-list'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'business-form' | 'business-management' | 'import-export' | 'send-sms' | 'price-list' | 'settings' | 'sms-conversations'>('overview');
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
   const [scheduledSms, setScheduledSms] = useState<ScheduledSms[]>([]);
@@ -170,6 +172,26 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 Price List
+              </button>
+              <button
+                onClick={() => setActiveTab('sms-conversations')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'sms-conversations'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                💬 SMS Conversations
+              </button>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'settings'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                ⚙️ Settings
               </button>
             </nav>
           </div>
@@ -381,6 +403,22 @@ const Dashboard: React.FC = () => {
           {activeTab === 'send-sms' && <SmsSender businessId={overview?.business?.id || ''} />}
           
           {activeTab === 'price-list' && <PriceListManager businessId={overview?.business?.id || ''} />}
+          
+          {activeTab === 'sms-conversations' && overview?.business && (
+            <SMSConversationViewer businessId={overview.business.id} />
+          )}
+          
+          {activeTab === 'settings' && overview?.business && (
+            <BusinessSettings 
+              business={overview.business} 
+              onUpdate={(updatedBusiness) => {
+                setOverview(prev => {
+                  if (!prev) return null;
+                  return { ...prev, business: { ...prev.business, ...updatedBusiness } } as DashboardOverview;
+                });
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -211,6 +211,9 @@ const BusinessManagement: React.FC = () => {
                         Name
                       </th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Status
+                      </th>
+                      <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Contact
                       </th>
                       <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
@@ -236,6 +239,33 @@ const BusinessManagement: React.FC = () => {
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
                           {business.name}
                         </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          {business.config_status ? (
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">{business.config_status.status_label}</span>
+                              <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full ${
+                                    business.config_status.status === 'ready' ? 'bg-green-500' :
+                                    business.config_status.status === 'incomplete' ? 'bg-yellow-500' :
+                                    'bg-red-500'
+                                  }`}
+                                  style={{ width: `${business.config_status.completion_percent}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-500 mt-1">
+                                {business.config_status.completion_percent}% complete
+                              </span>
+                              {business.config_status.missing_required.length > 0 && (
+                                <span className="text-xs text-red-600 mt-1">
+                                  Missing: {business.config_status.missing_required.join(', ')}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Unknown</span>
+                          )}
+                        </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           <div>
                             {business.contact_phone && <div>{business.contact_phone}</div>}
@@ -244,7 +274,7 @@ const BusinessManagement: React.FC = () => {
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           <div className="text-purple-600 font-medium">
-                            {business.twilio_phone_number || 'Not set'}
+                            {business.sms_phone_number || 'Not set'}
                           </div>
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">

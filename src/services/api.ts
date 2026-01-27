@@ -44,7 +44,7 @@ class ApiService {
 
   // Auth endpoints
   async login(email: string, password: string) {
-    const response = await this.api.post('/api/auth/login', { email, password });
+    const response = await this.api.post('/auth/login', { email, password });
     return response.data;
   }
 
@@ -54,59 +54,59 @@ class ApiService {
     full_name: string;
     role?: string;
   }) {
-    const response = await this.api.post('/api/auth/register', userData);
+    const response = await this.api.post('/auth/register', userData);
     return response.data;
   }
 
   async getCurrentUser() {
-    const response = await this.api.get('/api/auth/me');
+    const response = await this.api.get('/auth/me');
     return response.data;
   }
 
   // Dashboard endpoints
   async getDashboardOverview() {
-    const response = await this.api.get('/api/dashboard/overview');
+    const response = await this.api.get('/dashboard/overview');
     return response.data;
   }
 
   async getAdminDashboardOverview() {
-    const response = await this.api.get('/api/dashboard/admin/overview');
+    const response = await this.api.get('/dashboard/admin/overview');
     return response.data;
   }
 
   async getRecentCustomers(limit: number = 10) {
-    const response = await this.api.get(`/api/dashboard/customers/recent?limit=${limit}`);
+    const response = await this.api.get(`/dashboard/customers/recent?limit=${limit}`);
     return response.data;
   }
 
   async getInactiveCustomers(months: number = 3) {
-    const response = await this.api.get(`/api/dashboard/customers/inactive?months=${months}`);
+    const response = await this.api.get(`/dashboard/customers/inactive?months=${months}`);
     return response.data;
   }
 
   async getScheduledSms() {
-    const response = await this.api.get('/api/dashboard/sms/scheduled');
+    const response = await this.api.get('/dashboard/sms/scheduled');
     return response.data;
   }
 
   async getSmsHistory(days: number = 30) {
-    const response = await this.api.get(`/api/dashboard/sms/history?days=${days}`);
+    const response = await this.api.get(`/dashboard/sms/history?days=${days}`);
     return response.data;
   }
 
   async getRetentionStats(months: number = 12) {
-    const response = await this.api.get(`/api/dashboard/stats/retention?months=${months}`);
+    const response = await this.api.get(`/dashboard/stats/retention?months=${months}`);
     return response.data;
   }
 
   async cancelScheduledSms(smsId: string) {
-    const response = await this.api.post(`/api/dashboard/sms/cancel/${smsId}`);
+    const response = await this.api.post(`/dashboard/sms/cancel/${smsId}`);
     return response.data;
   }
 
   // SMS sending endpoints
   async getBusinessCustomers(businessId: string) {
-    const response = await this.api.get(`/api/businesses/${businessId}/customers`);
+    const response = await this.api.get(`/businesses/${businessId}/customers`);
     return response.data;
   }
 
@@ -115,7 +115,7 @@ class ApiService {
     message: string;
     business_id: string;
   }) {
-    const response = await this.api.post('/api/sms/send-bulk', data);
+    const response = await this.api.post('/sms/send-bulk', data);
     return response.data;
   }
 
@@ -124,13 +124,13 @@ class ApiService {
     message: string;
     business_id: string;
   }) {
-    const response = await this.api.post('/api/sms/send', data);
+    const response = await this.api.post('/sms/send', data);
     return response.data;
   }
 
   // Price list endpoints
   async importPriceList(formData: FormData) {
-    const response = await this.api.post('/api/pricelist/import', formData, {
+    const response = await this.api.post('/pricelist/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -139,14 +139,14 @@ class ApiService {
   }
 
   async exportPriceList(businessId: string) {
-    const response = await this.api.get(`/api/pricelist/export?business_id=${businessId}`, {
+    const response = await this.api.get(`/pricelist/export?business_id=${businessId}`, {
       responseType: 'blob',
     });
     return response.data;
   }
 
   async getPriceList(businessId: string) {
-    const response = await this.api.get(`/api/pricelist/${businessId}`);
+    const response = await this.api.get(`/pricelist/${businessId}`);
     return response.data;
   }
 
@@ -156,32 +156,32 @@ class ApiService {
     limit?: number;
     search?: string;
   }) {
-    const response = await this.api.get('/api/customers/', { params });
+    const response = await this.api.get('/customers/', { params });
     return response.data;
   }
 
   async getCustomer(customerId: string) {
-    const response = await this.api.get(`/api/customers/${customerId}`);
+    const response = await this.api.get(`/customers/${customerId}`);
     return response.data;
   }
 
   async createCustomer(customerData: any) {
-    const response = await this.api.post('/api/customers/', customerData);
+    const response = await this.api.post('/customers/', customerData);
     return response.data;
   }
 
   async updateCustomer(customerId: string, customerData: any) {
-    const response = await this.api.put(`/api/customers/${customerId}`, customerData);
+    const response = await this.api.put(`/customers/${customerId}`, customerData);
     return response.data;
   }
 
   async deleteCustomer(customerId: string) {
-    const response = await this.api.delete(`/api/customers/${customerId}`);
+    const response = await this.api.delete(`/customers/${customerId}`);
     return response.data;
   }
 
   async deleteBusiness(businessId: string) {
-    const response = await this.api.delete(`/api/businesses/${businessId}`);
+    const response = await this.api.delete(`/businesses/${businessId}`);
     return response.data;
   }
 
@@ -207,14 +207,14 @@ class ApiService {
 
   // Admin endpoints
   async getAdminStats() {
-    const response = await this.api.get('/api/admin/stats');
+    const response = await this.api.get('/admin/stats');
     return response.data;
   }
 
   // User management endpoints
   async getUsers() {
     try {
-      const response = await this.api.get('/api/admin/users');
+      const response = await this.api.get('/admin/users');
       return response.data;
     } catch (error: any) {
       console.error('Get users error:', error.response?.data || error.message);
@@ -230,7 +230,7 @@ class ApiService {
     business_id?: string;
   }) {
     try {
-      const response = await this.api.post('/api/admin/users', userData);
+      const response = await this.api.post('/admin/users', userData);
       return response.data;
     } catch (error: any) {
       console.error('Create user error:', error.response?.data || error.message);
@@ -245,7 +245,7 @@ class ApiService {
     password?: string;
   }) {
     try {
-      const response = await this.api.put(`/api/admin/users/${userId}`, userData);
+      const response = await this.api.put(`/admin/users/${userId}`, userData);
       return response.data;
     } catch (error: any) {
       console.error('Update user error:', error.response?.data || error.message);
@@ -255,7 +255,7 @@ class ApiService {
 
   async deleteUser(userId: string) {
     try {
-      const response = await this.api.delete(`/api/admin/users/${userId}`);
+      const response = await this.api.delete(`/admin/users/${userId}`);
       return response.data;
     } catch (error: any) {
       console.error('Delete user error:', error.response?.data || error.message);
@@ -269,7 +269,7 @@ class ApiService {
     formData.append('file', file);
     formData.append('business_id', businessId);
     
-    const response = await this.api.post('/api/customers/import', formData, {
+    const response = await this.api.post('/customers/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -285,7 +285,7 @@ class ApiService {
     if (endDate) params.end_date = endDate;
     if (visitStatus) params.visit_status = visitStatus;
     
-    const response = await this.api.get('/api/customers/export', {
+    const response = await this.api.get('/customers/export', {
       params,
       responseType: 'blob',
     });
@@ -299,8 +299,8 @@ class ApiService {
     limit?: number;
   }) {
     try {
-      console.log('Fetching all businesses from /api/businesses/');
-      const response = await this.api.get('/api/businesses/', { params });
+      console.log('Fetching all businesses from /businesses/');
+      const response = await this.api.get('/businesses/', { params });
       console.log('Businesses response:', response.data);
       return response.data;
     } catch (error: any) {
@@ -311,7 +311,7 @@ class ApiService {
 
   async createBusiness(businessData: any) {
     try {
-      const response = await this.api.post('/api/businesses/', businessData);
+      const response = await this.api.post('/businesses/', businessData);
       return response.data;
     } catch (error: any) {
       console.error('Create business error:', error.response?.data || error.message);
@@ -320,49 +320,49 @@ class ApiService {
   }
 
   async getBusiness(businessId: string) {
-    const response = await this.api.get(`/api/businesses/${businessId}`);
+    const response = await this.api.get(`/businesses/${businessId}`);
     return response.data;
   }
 
   async updateBusiness(businessId: string, businessData: any) {
-    const response = await this.api.put(`/api/businesses/${businessId}`, businessData);
+    const response = await this.api.put(`/businesses/${businessId}`, businessData);
     return response.data;
   }
 
   async addBusinessLocation(businessId: string, locationData: any) {
-    const response = await this.api.post(`/api/businesses/${businessId}/locations`, locationData);
+    const response = await this.api.post(`/businesses/${businessId}/locations`, locationData);
     return response.data;
   }
 
   async getBusinessLocations(businessId: string) {
-    const response = await this.api.get(`/api/businesses/${businessId}/locations`);
+    const response = await this.api.get(`/businesses/${businessId}/locations`);
     return response.data;
   }
 
   // Workflow endpoints
   async getWorkflows(businessId?: string) {
     const params = businessId ? { business_id: businessId } : {};
-    const response = await this.api.get('/api/workflows/', { params });
+    const response = await this.api.get('/workflows/', { params });
     return response.data;
   }
 
   async getWorkflow(workflowId: string) {
-    const response = await this.api.get(`/api/workflows/${workflowId}`);
+    const response = await this.api.get(`/workflows/${workflowId}`);
     return response.data;
   }
 
   async createWorkflow(workflowData: any) {
-    const response = await this.api.post('/api/workflows/', workflowData);
+    const response = await this.api.post('/workflows/', workflowData);
     return response.data;
   }
 
   async updateWorkflow(workflowId: string, workflowData: any) {
-    const response = await this.api.put(`/api/workflows/${workflowId}`, workflowData);
+    const response = await this.api.put(`/workflows/${workflowId}`, workflowData);
     return response.data;
   }
 
   async deleteWorkflow(workflowId: string) {
-    const response = await this.api.delete(`/api/workflows/${workflowId}`);
+    const response = await this.api.delete(`/workflows/${workflowId}`);
     return response.data;
   }
 
